@@ -1,1 +1,5 @@
-export {default} from './services'
+import dataService from './services/dataService'
+
+export default {
+  dataService,
+}
