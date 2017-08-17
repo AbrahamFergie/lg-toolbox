@@ -1,5 +1,2 @@
-import dataService from './services/dataService'
-
-export default {
-  dataService,
-}
+const dataService = require('./services/dataService')
+module.exports = dataService

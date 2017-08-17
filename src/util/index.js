@@ -1,6 +1,6 @@
-import autoloader from 'auto-loader'
+const autoloader = require('auto-loader')
 
-export function autoloadFunctions(directoryPath) {
+function autoloadFunctions(directoryPath) {
   const moduleExports = autoloader.load(directoryPath)
   return Object.keys(moduleExports).reduce((result, key) => {
     if (typeof moduleExports[key] === 'function') {
@@ -9,3 +9,5 @@ export function autoloadFunctions(directoryPath) {
     return result
   }, {})
 }
+
+module.exports = autoloadFunctions
