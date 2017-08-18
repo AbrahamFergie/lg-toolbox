@@ -1,13 +1,16 @@
 const rethinkdbdash = require('rethinkdbdash')
 
 const dataService = require('../index')
+const resetDB = require("../../../util/index").resetDB
 const dummyModelModel = require('./models/dummyModel')
 const dummyModelModelTwo = require('./models/dummyModelTwo')
 const dummyQuery = require('./queries/dummyQuery')
 const dummyQueryTwo = require('./queries/dummyQueryTwo')
 
+const dbName = 'lgToolboxTest'
+const rethinkdb = rethinkdbdash({db: dbName})
+
 describe('data service', () => {
-  const rethinkdb = rethinkdbdash()
   describe('rethinkdb param', () => {
     describe('is a config object', () => {
       it('returns a rethinkdb instance with provided config', () => {
@@ -31,6 +34,7 @@ describe('data service', () => {
     })
   })
   describe('options param', () => {
+
     describe('models', () => {
       it('throws an error if not file path or array', () => {
         expect(() => dataService(rethinkdb, {models: 5})).to.throw('options.models must be a path to directory or array of model definition functions')
@@ -51,7 +55,6 @@ describe('data service', () => {
           expect(ds).to.have.own.property('DummyModelTwo')
         })
       })
-      //test thinky model associations and timestamp updates
     })
     describe('queries', () => {
       it('throws an error if not file path or array', () => {
@@ -73,6 +76,51 @@ describe('data service', () => {
           expect(ds).to.have.own.property('dummyQueryTwo')
         })
       })
+    })
+  })
+  describe('thinky models', async () => {
+    const options = {models: [dummyModelModel,  dummyModelModelTwo]}
+    const ds = dataService(rethinkdb, options)
+    const {DummyModel} = ds
+
+    let dummy
+    beforeEach( async () => {
+      await resetDB(rethinkdb)
+      dummy = await DummyModel.save({})
+    })
+    it('save method sets updatedAt property', async () => {
+      expect(dummy).to.be.an('object')
+      expect(dummy).to.have.own.property('id')
+      expect(dummy).to.have.own.property('updatedAt')
+      expect(dummy.id).to.be.a('string')
+      expect(dummy.updatedAt instanceof Date).to.be.true
+    })
+    it('updateWithTimestamp sets updatedAt property to current time', async () => {
+      const updatedDummy = await DummyModel
+        .get(dummy.id)
+        .updateWithTimestamp()
+      expect(dummy.id).to.be.equal(updatedDummy.id)
+      expect(dummy.updatedAt instanceof Date).to.be.true
+      expect(updatedDummy.updatedAt instanceof Date).to.be.true
+      expect(dummy.updatedAt).to.not.be.equal(updatedDummy.updatedAt)
+    })
+    it('upsert either saves or updates rows based on whether instance exists', async () => {
+      const savedDummy = await DummyModel.upsert()
+      expect(savedDummy).to.be.an('object')
+      expect(savedDummy).to.have.own.property('id')
+      expect(savedDummy).to.have.own.property('updatedAt')
+      const updatedDummy = await DummyModel.upsert(dummy)
+      expect(dummy.id).to.be.equal(updatedDummy.id)
+      expect(dummy.updatedAt).to.not.be.equal(updatedDummy.updatedAt)
+    })
+    it('creates thinky model associations', async () => {
+      const {DummyModelTwo} = ds
+      const dummyTwo = await DummyModelTwo.save({
+        dummyModelId: dummy.id,
+        name: 'My Name is DummyTwo and I belong to Dummy',
+      })
+      const dummyTwoJoined = await  DummyModelTwo.get(dummyTwo.id).getJoin().run()
+      expect(dummyTwoJoined).has.own.property('dummys')
     })
   })
 })

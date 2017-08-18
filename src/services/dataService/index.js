@@ -1,7 +1,7 @@
 const thinky = require('thinky')
 const rethinkdbdash = require('rethinkdbdash')
 
-const autoloadFunctions = require('../../util')
+const autoloadFunctions = require('../../util').autoloadFunctions
 
 function dataService(rethinkdb, options) {
   if (!rethinkdb) {
@@ -88,7 +88,7 @@ function _createModel(modelDefinition, t) {
 
   //NOTE: will this work: model.docOn('saving', _updateTimestamps)
   model.docOn('saving', (doc) => {
-    doc = _updateTimestamps(doc)
+    _updateTimestamps(doc)
   })
   model.defineStatic('updateWithTimestamp', function (values = {}) {
     return this.update(_updateTimestamps(values))
@@ -124,11 +124,10 @@ function _associateModels(models, modelDefs) {
 }
 
 function _updateTimestamps(values = {}) {
-  const newValues = Object.assign({}, values)
-  if (!newValues.updatedAt && typeof newValues !== 'function') {
-    newValues.updatedAt = new Date()
+  if (!values.updatedAt && typeof values !== 'function') {
+    values.updatedAt = new Date()
   }
-  return newValues
+  return values
 }
 
 module.exports = dataService
